@@ -23,10 +23,11 @@ class CollisionDetector
 {
     sf::Vector2f worldSize;
     sf::RenderTexture collisionPairTexture;
+    sf::RenderTexture resolvingTexture;
     sf::Shader collisionShader;
+    sf::Shader resolutionShader;
     sf::Sprite emptySprite;
-
-    sf::RectangleShape debugShape;
+    sf::Sprite emptyResSprite;
 
     std::vector<sf::Glsl::Vec2 > spherePositions;
     std::vector<sf::Vector2f > sphereVelocities;
@@ -50,12 +51,16 @@ public:
         }
         collisionPairTexture.create(noSpheres, noSpheres);
         emptySprite.setTexture(collisionPairTexture.getTexture());
-        emptySprite.setScale({10.0f, 10.0f});
 
-        debugShape.setSize({100.0f, 100.0f});
-        debugShape.setPosition({100.0f, 100.0f});
+        resolvingTexture.create(noSpheres, 1);
+        emptyResSprite.setTexture(resolvingTexture.getTexture());
+
 
         if (!collisionShader.loadFromFile("collision.frag", sf::Shader::Fragment))
+        {
+            std::cout << "error loading shader\n";
+        }
+        if (!resolutionShader.loadFromFile("resolving.frag", sf::Shader::Fragment))
         {
             std::cout << "error loading shader\n";
         }
@@ -106,7 +111,7 @@ public:
 
         collisionPairTexture.draw(emptySprite, &collisionShader);
 
-        getCollidingPairsFromTexture(collisionPairTexture.getTexture());
+       // getCollidingPairsFromTexture(collisionPairTexture.getTexture());
     }
 
     void detectCollisionsCPU()
@@ -139,6 +144,18 @@ public:
 
             }
         }
+    }
+
+    void resolveCollisionsPureShader()
+    {
+        resolutionShader.setUniform("collisionTexture", &collisionPairTexture);
+
+        resolvingTexture.draw(emptyResSprite, &resolutionShader);
+
+        auto image = resolvingTexture.getTexture().copyToImage();
+
+        for(int i=0; i<image.getSize().x; ++i)
+            sphereColors[i] = image.getPixel(i,1);
     }
 
     void drawSpheres(sf::RenderWindow &window)
@@ -213,7 +230,7 @@ int main()
                 test.detectCollisionsCPU();
             else
                 test.detectCollisionsGPU();
-            test.resolveCollisions();
+            test.resolveCollisionsPureShader();
             test.integratePositions(0.1f);
 
         }

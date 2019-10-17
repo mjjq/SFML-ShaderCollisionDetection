@@ -1,0 +1,38 @@
+
+uniform sampler2D collisionTexture;
+
+uniform int nSpheres;
+
+bool getIntersectingPixel(int sphere1, int sphere2)
+{
+    float texCoord1 = float(sphere1) / float(nSpheres);
+    float texCoord2 = float(sphere2) / float(nSpheres);
+
+    vec4 pixelValue = texture2D(collisionTexture, vec2(texCoord1, texCoord2));
+
+    if(pixelValue.x < 0.5)
+        return false;
+
+    return true;
+}
+
+bool isIntersecting(int currentSphere)
+{
+    for(int i=0; i<nSpheres; ++i)
+        if(getIntersectingPixel(currentSphere, i)==true)
+            return true;
+
+    return false;
+}
+
+void main()
+{
+    int sphere = int(gl_TexCoord[0].x * float(nSpheres));
+
+    if(isIntersecting(sphere))
+        gl_FragColor = vec4(0.0, 1.0, 0.0, 1.0);
+    else
+        gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
+
+    //gl_FragColor = vec4(gl_TexCoord[0].xy, 0.0, 1.0);
+}
