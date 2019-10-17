@@ -155,7 +155,7 @@ public:
         auto image = resolvingTexture.getTexture().copyToImage();
 
         for(int i=0; i<image.getSize().x; ++i)
-            sphereColors[i] = image.getPixel(i,1);
+            sphereColors[i] = image.getPixel(i,0);
     }
 
     void drawSpheres(sf::RenderWindow &window)
@@ -186,7 +186,7 @@ int main()
     sf::VideoMode mode(800, 800);
     window.create(mode, "test");
 
-    CollisionDetector test(1000, {100.0f, 100.0f});
+    CollisionDetector test(4, {100.0f, 100.0f});
 
 
 
