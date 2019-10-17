@@ -4,13 +4,19 @@
 #include <SFML/OpenGL.hpp>
 #include <stdlib.h>
 
-struct Sphere
+class Math
 {
-    sf::Vector2f position;
-    sf::Vector2f velocity;
+public:
+    static float dot(sf::Vector2f const & v1,
+              sf::Vector2f const & v2)
+    {
+        return v1.x*v2.x + v1.y*v2.y;
+    }
 
-private:
-    float radius = 5.0f;
+    static float square(sf::Vector2f const & v)
+    {
+        return Math::dot(v,v);
+    }
 };
 
 class CollisionDetector
@@ -29,7 +35,7 @@ class CollisionDetector
 
     int numSpheres = 0;
 
-    float radius = 5.0f;
+    float radius = 2.0f;
 
 public:
     CollisionDetector(int noSpheres, sf::Vector2f _worldSize) : worldSize{_worldSize}, numSpheres{noSpheres}
@@ -90,7 +96,7 @@ public:
         //std::cout << collidingPairs.size() << " collpairs\n";
     }
 
-    void detectCollisions()
+    void detectCollisionsGPU()
     {
 
         collisionShader.setUniformArray("positions", spherePositions.data(), spherePositions.size());
@@ -101,6 +107,17 @@ public:
         collisionPairTexture.draw(emptySprite, &collisionShader);
 
         getCollidingPairsFromTexture(collisionPairTexture.getTexture());
+    }
+
+    void detectCollisionsCPU()
+    {
+        collidingPairs.clear();
+        for(int i=0; i<spherePositions.size(); ++i)
+            for(int j=i+1; j<spherePositions.size(); ++j)
+            {
+                if(Math::square(spherePositions[i] - spherePositions[j]) <= 4.0f*radius*radius )
+                    collidingPairs.push_back({i,j});
+            }
     }
 
     void resolveCollisions()
@@ -137,7 +154,7 @@ public:
             window.draw(circle);
         }
 
-        emptySprite.setScale({200.0f/numSpheres, 200.0f/numSpheres});
+        emptySprite.setScale({500.0f/numSpheres, 500.0f/numSpheres});
         emptySprite.setPosition({200.0f, 200.0f});
         window.draw(emptySprite);
         emptySprite.setPosition({00.0f, 00.0f});
@@ -152,28 +169,14 @@ int main()
     sf::VideoMode mode(800, 800);
     window.create(mode, "test");
 
-    CollisionDetector test(150, {100.0f, 100.0f});
+    CollisionDetector test(1000, {100.0f, 100.0f});
 
-    sf::Shader shader;
-    shader.loadFromFile("collision.frag", sf::Shader::Fragment);
-    sf::RenderTexture texture;
-    texture.create(20,20);
 
-    sf::Sprite emptySprite;
-    emptySprite.setTexture(texture.getTexture());
-    texture.draw(emptySprite, &shader);
-    emptySprite.setScale({20.f, 20.0f});
-
-    sf::RectangleShape shape;
-    shape.setPosition(100.0f, 100.0f);
-    shape.setSize({10.0f, 10.0f});
-    shape.setScale({10.0f, 10.0f});
-
-    shape.setTexture(&texture.getTexture());
 
     srand(420000);
 
     bool isPaused = false;
+    bool useGPUColl = true;
 
     while(window.isOpen())
     {
@@ -190,7 +193,10 @@ int main()
 
                     if(sf::Keyboard::isKeyPressed(sf::Keyboard::Space))
                         isPaused = !isPaused;
+                    else if(sf::Keyboard::isKeyPressed(sf::Keyboard::C))
+                        useGPUColl = !useGPUColl;
                     break;
+
 
                 default:
                     break;
@@ -203,12 +209,14 @@ int main()
 
         if(!isPaused)
         {
-            test.detectCollisions();
+            if(!useGPUColl)
+                test.detectCollisionsCPU();
+            else
+                test.detectCollisionsGPU();
             test.resolveCollisions();
             test.integratePositions(0.1f);
 
         }
-        //window.draw(emptySprite);
             test.drawSpheres(window);
 
         window.display();
