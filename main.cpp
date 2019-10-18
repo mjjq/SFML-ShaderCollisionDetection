@@ -3,6 +3,7 @@
 #include <SFML/Graphics.hpp>
 #include <SFML/OpenGL.hpp>
 #include <stdlib.h>
+#include <cmath>
 
 class Math
 {
@@ -29,6 +30,7 @@ class CollisionDetector
     sf::Sprite emptySprite;
     sf::Sprite emptyResSprite;
 
+    std::vector<sf::Vertex > drawables;
     std::vector<sf::Glsl::Vec2 > spherePositions;
     std::vector<sf::Vector2f > sphereVelocities;
     std::vector<sf::Color > sphereColors;
@@ -36,7 +38,7 @@ class CollisionDetector
 
     int numSpheres = 0;
 
-    float radius = 2.0f;
+    float radius = 0.5f;
 
 public:
     CollisionDetector(int noSpheres, sf::Vector2f _worldSize) : worldSize{_worldSize}, numSpheres{noSpheres}
@@ -44,10 +46,11 @@ public:
         for(int i=0; i<noSpheres; ++i)
         {
             float scale = 10.0f;
-            float random = (float)rand()/(float)RAND_MAX;
+            float random = scale * (float)rand()/(float)RAND_MAX;
             spherePositions.push_back(worldSize/2.0f);
-            sphereVelocities.push_back(scale*sf::Vector2f{random, random*random});
+            sphereVelocities.push_back(scale* (float)rand()/(float)RAND_MAX * sf::Vector2f{cos(random), sin(random)});
             sphereColors.push_back(sf::Color::Red);
+            drawables.push_back({{0.0f, 0.0f}});
         }
         collisionPairTexture.create(noSpheres, noSpheres);
         emptySprite.setTexture(collisionPairTexture.getTexture());
@@ -148,7 +151,8 @@ public:
 
     void resolveCollisionsPureShader()
     {
-        resolutionShader.setUniform("collisionTexture", &collisionPairTexture);
+        resolutionShader.setUniform("collisionTexture", collisionPairTexture.getTexture());
+        resolutionShader.setUniform("nSpheres", numSpheres);
 
         resolvingTexture.draw(emptyResSprite, &resolutionShader);
 
@@ -160,22 +164,32 @@ public:
 
     void drawSpheres(sf::RenderWindow &window)
     {
-        sf::CircleShape circle(radius);
-        circle.setOrigin(radius, radius);
+        //sf::CircleShape circle(radius);
+        //circle.setOrigin(radius, radius);
         //circle.setFillColor(sf::Color::Red);
         for(int i=0; i<spherePositions.size(); ++i)
         {
-            circle.setPosition(spherePositions[i]);
-            circle.setFillColor(sphereColors[i]);
+            //circle.setPosition(spherePositions[i]);
+            //circle.setFillColor(sphereColors[i]);
 
-            window.draw(circle);
+            drawables[i].position = spherePositions[i];
+            drawables[i].color = sphereColors[i];
+
+            //window.draw(circle);
         }
+        window.draw(drawables.data(), drawables.size(), sf::Points);
 
         emptySprite.setScale({500.0f/numSpheres, 500.0f/numSpheres});
         emptySprite.setPosition({200.0f, 200.0f});
         window.draw(emptySprite);
         emptySprite.setPosition({00.0f, 00.0f});
         emptySprite.setScale({1.0f, 1.0f});
+
+        emptyResSprite.setScale({500.0f/numSpheres, 500.0f/numSpheres});
+        emptyResSprite.setPosition({200.0f, 100.0f});
+        window.draw(emptyResSprite);
+        emptyResSprite.setPosition({00.0f, 00.0f});
+        emptyResSprite.setScale({1.0f, 1.0f});
     }
 
 };
@@ -186,7 +200,7 @@ int main()
     sf::VideoMode mode(800, 800);
     window.create(mode, "test");
 
-    CollisionDetector test(4, {100.0f, 100.0f});
+    CollisionDetector test(10000, {200.0f, 200.0f});
 
 
 
@@ -227,10 +241,15 @@ int main()
         if(!isPaused)
         {
             if(!useGPUColl)
+            {
                 test.detectCollisionsCPU();
+                test.resolveCollisions();
+            }
             else
+            {
                 test.detectCollisionsGPU();
-            test.resolveCollisionsPureShader();
+                test.resolveCollisionsPureShader();
+            }
             test.integratePositions(0.1f);
 
         }

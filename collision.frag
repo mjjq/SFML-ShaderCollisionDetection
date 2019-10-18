@@ -1,6 +1,6 @@
 
 uniform int nSpheres;
-uniform vec2[1024] positions;
+uniform vec2[12000] positions;
 uniform float radius;
 
 

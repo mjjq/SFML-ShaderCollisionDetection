@@ -39,7 +39,9 @@
 			<Add library="sfml-system" />
 			<Add directory="I:/Users/Marcus/My Documents/Github/SFML-source/lib" />
 		</Linker>
+		<Unit filename="collision.frag" />
 		<Unit filename="main.cpp" />
+		<Unit filename="resolving.frag" />
 		<Extensions>
 			<code_completion />
 			<envvars />
